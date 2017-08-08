@@ -1,109 +1,123 @@
 package providers
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"os/exec"
+	"bytes"
+	"errors"
+	"io"
+	"net/http"
 	"regexp"
 	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
-	xmlpath "gopkg.in/xmlpath.v2"
+	"github.com/moovweb/gokogiri"
 )
 
-type XseoIn struct {
-	jsFileName string
-	mutex      sync.Mutex
-	wasUpdate  uint32
-	proxyList  []string
-}
+var (
+	portParamsRegexp = regexp.MustCompile(`([a-z]=\d;){10}`)
+	portRegexp       = regexp.MustCompile(`(\+[a-z]){2,4}`)
+	ipRegexp         = regexp.MustCompile(`(\d{1,3}\.){3}\d{1,3}`)
+)
 
-var instanceXseoIn *XseoIn
-var instanceXseoInOnce sync.Once
+type XseoIn struct{}
 
 func NewXseoIn() *XseoIn {
-	instanceXseoInOnce.Do(func() {
-		instanceXseoIn = (&XseoIn{jsFileName: "XseoIn.js"}).init()
-	})
-	return instanceXseoIn
+	return &XseoIn{}
 }
 
-func (x *XseoIn) init() *XseoIn {
-	ticker := time.NewTicker(time.Minute * 30)
-	go func() {
-		for _ = range ticker.C {
-			x.mutex.Lock()
-			atomic.StoreUint32(&x.wasUpdate, 0)
-			x.mutex.Unlock()
+func (x *XseoIn) MakeRequest() ([]byte, error) {
+	postData := strings.NewReader(`submit=%D0%9F%D0%BE%D0%BA%D0%B0%D0%B7%D0%B0%D1%82%D1%8C+%D0%BF%D0%BE+150+%D0%BF%D1%80%D0%BE%D0%BA%D1%81%D0%B8+%D0%BD%D0%B0+%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B5`)
+	req, err := http.NewRequest("POST", "http://xseo.in/proxylist", postData)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Origin", "http://xseo.in")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.8,uk;q=0.6,ru;q=0.4")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Set("Referer", "http://xseo.in/proxylist")
+	req.Header.Set("Connection", "keep-alive")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var body bytes.Buffer
+
+	if _, err := io.Copy(&body, resp.Body); err != nil {
+		return nil, err
+	}
+
+	return body.Bytes(), nil
+}
+
+func (x *XseoIn) DecodeParamsToMap(params string) map[byte]byte {
+	return map[byte]byte{
+		params[0]:  params[2],  //0
+		params[4]:  params[6],  //1
+		params[8]:  params[10], //2
+		params[12]: params[14], //3
+		params[16]: params[18], //4
+		params[20]: params[22], //5
+		params[24]: params[26], //6
+		params[28]: params[30], //7
+		params[32]: params[34], //8
+		params[36]: params[38], //9
+	}
+}
+
+func (x *XseoIn) DecodePort(decodeParams map[byte]byte, encryptedData string) []byte {
+	if len(encryptedData) == 8 {
+		return []byte{decodeParams[encryptedData[1]], decodeParams[encryptedData[3]], decodeParams[encryptedData[5]], decodeParams[encryptedData[7]]}
+	}
+	if len(encryptedData) == 4 {
+		return []byte{decodeParams[encryptedData[1]], decodeParams[encryptedData[3]]}
+	}
+	return nil
+}
+
+func (x *XseoIn) Load(body []byte) ([]string, error) {
+	if body == nil {
+		var err error
+		if body, err = x.MakeRequest(); err != nil {
+			return nil, err
 		}
-	}()
-	return x
-}
-
-func (x *XseoIn) jsFileContent() string {
-	return `
-	var webPage = require('webpage');
-	var page = webPage.create();
-	var postBody = 'submit=Показать по 150 прокси на странице';
-
-	page.open('http://xseo.in/proxylist','POST',postBody, function() {
-		page.evaluate(function() {    
-			$('.submit').click()
-		})
-		setTimeout(function() {
-	        console.log(page.content);
-			phantom.exit();
-		}, 5000)
-	});`
-}
-
-func (x *XseoIn) load() []string {
-	var proxyList []string
-
-	file, err := os.Create(x.jsFileName)
-	if err != nil {
-		log.Println(err)
-		return proxyList
 	}
-	file.WriteString(x.jsFileContent())
 
-	out, err := exec.Command("phantomjs", x.jsFileName).Output()
+	decodeParams := x.DecodeParamsToMap(portParamsRegexp.FindString(string(body)))
+
+	doc, err := gokogiri.ParseHtml(body)
 	if err != nil {
-		log.Println(err)
-		return proxyList
+		return nil, err
 	}
-	reader := strings.NewReader(string(out))
-	xmlroot, err := xmlpath.ParseHTML(reader)
+	defer doc.Free()
+
+	ips, err := doc.Search(`//tr[contains(@class, 'cls8') or contains(@class ,'cls81')]`)
 	if err != nil {
-		log.Println(err)
-		return proxyList
+		return nil, err
 	}
-	obj := xmlpath.MustCompile("/html/body/table[1]/tbody/tr/td[1]/table[2]/tbody/tr/td/table[1]/tbody/tr/td[1]/font/text()")
-	it := obj.Iter(xmlroot)
-	for it.Next() {
-		ip := it.Node().String()
-		isIP, _ := regexp.MatchString(`(\d{1,3}\.){3}\d{1,3}`, ip)
-		if isIP {
-			it.Next()
-			proxyList = append(proxyList, fmt.Sprintf("%s:%s", ip, it.Node().String()))
+
+	if len(ips) == 0 {
+		return nil, errors.New("ip not found")
+	}
+
+	proxyList := make([]string, 0, len(ips))
+
+	for _, ip := range ips {
+		data := strings.Split(ip.Content(), ":")
+		if len(data) > 1 {
+			if ipRegexp.MatchString(data[0]) {
+				if port := x.DecodePort(decodeParams, portRegexp.FindString(data[1])); port != nil {
+					proxyList = append(proxyList, data[0]+":"+string(port))
+				}
+			}
 		}
 	}
-	return proxyList
+	return proxyList, nil
 }
 
-func (x *XseoIn) List() []string {
-	if atomic.LoadUint32(&x.wasUpdate) == 1 {
-		return x.proxyList
-	}
-	x.mutex.Lock()
-	defer x.mutex.Unlock()
-
-	if x.wasUpdate == 0 {
-		x.proxyList = x.load()
-		atomic.StoreUint32(&x.wasUpdate, 1)
-	}
-	return x.proxyList
+func (x *XseoIn) List() ([]string, error) {
+	return x.Load(nil)
 }

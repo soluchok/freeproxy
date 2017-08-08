@@ -1,24 +1,28 @@
 package freeproxy
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/soluchok/freeproxy/providers"
 )
 
-var instance *ProxyGenerator
-var once sync.Once
+var (
+	instance *ProxyGenerator
+	once     sync.Once
+)
 
 type Provider interface {
-	List() []string
+	List() ([]string, error)
 }
 
 type CheckIP struct {
@@ -27,7 +31,7 @@ type CheckIP struct {
 
 type ProxyGenerator struct {
 	Timeout   time.Duration
-	mutex     sync.Mutex
+	canLoad   uint32
 	providers []Provider
 	proxyList chan string
 }
@@ -37,17 +41,17 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 }
 
 func (p *ProxyGenerator) load() {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	if len(p.proxyList) == 0 {
-		for _, provider := range p.providers {
-			for _, proxy := range provider.List() {
-				if p.Check(proxy) {
-					p.proxyList <- proxy
-				}
-			}
+	for _, provider := range p.providers {
+		ips, err := provider.List()
+		if err != nil {
+			log.Printf("provider.List() %s", err.Error())
+			continue
+		}
+		for _, proxy := range ips {
+			jobs <- proxy
 		}
 	}
+	atomic.StoreUint32(&p.canLoad, 0)
 }
 
 func (p *ProxyGenerator) Check(proxy string) bool {
@@ -59,10 +63,17 @@ func (p *ProxyGenerator) Check(proxy string) bool {
 	if err != nil {
 		return false
 	}
+
 	client := &http.Client{
-		Timeout: time.Duration(p.Timeout * time.Second),
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy: http.ProxyURL(proxyURL)},
+		Timeout: time.Second * p.Timeout,
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+			Dial: (&net.Dialer{
+				Timeout: p.Timeout * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: p.Timeout * time.Second,
+			DisableKeepAlives:   true,
+		},
 	}
 
 	resp, err := client.Do(req)
@@ -87,19 +98,35 @@ func (p *ProxyGenerator) Get() string {
 	case proxy := <-p.proxyList:
 		return proxy
 	default:
-		go p.load()
+		if atomic.LoadUint32(&p.canLoad) == 0 {
+			atomic.StoreUint32(&p.canLoad, 1)
+			go p.load()
+		}
 	}
 	return <-p.proxyList
 }
+
+func worker(jobs <-chan string, results chan<- string) {
+	for proxy := range jobs {
+		if NewProxyGenerator().Check(proxy) {
+			results <- proxy
+		}
+	}
+}
+
+var jobs = make(chan string, 500)
 
 func NewProxyGenerator() *ProxyGenerator {
 	once.Do(func() {
 		instance = &ProxyGenerator{
 			Timeout:   5,
-			proxyList: make(chan string, 10000),
+			proxyList: make(chan string, 500),
 		}
-		instance.AddProvider(providers.NewFreeProxyListNet())
+		instance.AddProvider(providers.NewFreeProxyList())
 		instance.AddProvider(providers.NewXseoIn())
+		for w := 1; w <= 100; w++ {
+			go worker(jobs, instance.proxyList)
+		}
 	})
 	return instance
 }
