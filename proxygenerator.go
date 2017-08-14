@@ -54,7 +54,7 @@ func (p *ProxyGenerator) load() {
 	atomic.StoreUint32(&p.canLoad, 0)
 }
 
-func (p *ProxyGenerator) Check(proxy string) bool {
+func (p *ProxyGenerator) Check(proxy string, transp *http.Transport) bool {
 	req, err := http.NewRequest("GET", "http://api.ipify.org/?format=json", nil)
 	if err != nil {
 		return false
@@ -64,16 +64,10 @@ func (p *ProxyGenerator) Check(proxy string) bool {
 		return false
 	}
 
+	transp.Proxy = http.ProxyURL(proxyURL)
 	client := &http.Client{
-		Timeout: time.Second * p.Timeout,
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-			Dial: (&net.Dialer{
-				Timeout: p.Timeout * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: p.Timeout * time.Second,
-			DisableKeepAlives:   true,
-		},
+		Timeout:   time.Second * p.Timeout,
+		Transport: transp,
 	}
 
 	resp, err := client.Do(req)
@@ -107,8 +101,16 @@ func (p *ProxyGenerator) Get() string {
 }
 
 func worker(jobs <-chan string, results chan<- string) {
+	transp := &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout: NewProxyGenerator().Timeout * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: NewProxyGenerator().Timeout * time.Second,
+		DisableKeepAlives:   true,
+	}
+
 	for proxy := range jobs {
-		if NewProxyGenerator().Check(proxy) {
+		if NewProxyGenerator().Check(proxy, transp) {
 			results <- proxy
 		}
 	}
