@@ -66,7 +66,7 @@ func (p *ProxyGenerator) Check(proxy string, transp *http.Transport) bool {
 
 	transp.Proxy = http.ProxyURL(proxyURL)
 	client := &http.Client{
-		Timeout:   time.Second * p.Timeout,
+		//Timeout:   time.Second * p.Timeout,
 		Transport: transp,
 	}
 
