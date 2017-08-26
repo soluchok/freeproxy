@@ -66,12 +66,17 @@ func (p *ProxyGenerator) Check(proxy string, transp *http.Transport) bool {
 
 	transp.Proxy = http.ProxyURL(proxyURL)
 	client := &http.Client{
-		//Timeout:   time.Second * p.Timeout,
+		Timeout:   time.Second * p.Timeout,
 		Transport: transp,
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
+		if resp != nil {
+			if resp.Body != nil {
+				defer resp.Body.Close()
+			}
+		}
 		return false
 	}
 	defer resp.Body.Close()
@@ -102,9 +107,10 @@ func (p *ProxyGenerator) Get() string {
 
 func worker(jobs <-chan string, results chan<- string) {
 	transp := &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: NewProxyGenerator().Timeout * time.Second,
-		}).Dial,
+		DialContext: (&net.Dialer{
+			Timeout:   NewProxyGenerator().Timeout * time.Second,
+			DualStack: true,
+		}).DialContext,
 		TLSHandshakeTimeout: NewProxyGenerator().Timeout * time.Second,
 		DisableKeepAlives:   true,
 	}
