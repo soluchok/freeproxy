@@ -102,6 +102,7 @@ func (p *ProxyGenerator) Get() string {
 			go p.load()
 		}
 	}
+	time.Sleep(time.Second * 1)
 	return p.Get()
 }
 
