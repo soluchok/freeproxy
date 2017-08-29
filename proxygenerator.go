@@ -102,7 +102,7 @@ func (p *ProxyGenerator) Get() string {
 			go p.load()
 		}
 	}
-	return <-p.proxyList
+	return p.Get()
 }
 
 func worker(jobs <-chan string, results chan<- string) {
