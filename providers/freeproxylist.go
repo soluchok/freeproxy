@@ -6,6 +6,10 @@ import (
 	"io"
 	"net/http"
 
+	"time"
+
+	"net"
+
 	"github.com/moovweb/gokogiri"
 )
 
@@ -13,6 +17,15 @@ type FreeProxyList struct{}
 
 func NewFreeProxyList() *FreeProxyList {
 	return &FreeProxyList{}
+}
+
+var TransportMakeRequest = &http.Transport{
+	DialContext: (&net.Dialer{
+		Timeout:   time.Second * 5,
+		DualStack: true,
+	}).DialContext,
+	TLSHandshakeTimeout: time.Second * 5,
+	DisableKeepAlives:   true,
 }
 
 func (x *FreeProxyList) MakeRequest() ([]byte, error) {
@@ -28,7 +41,12 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 	req.Header.Set("Authority", "free-proxy-list.net")
 	req.Header.Set("Referer", "https://free-proxy-list.net/web-proxy.html")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Timeout:   time.Second * 5,
+		Transport: TransportMakeRequest,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/moovweb/gokogiri"
 )
@@ -38,7 +39,12 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Timeout:   time.Second * 5,
+		Transport: TransportMakeRequest,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
