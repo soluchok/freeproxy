@@ -109,11 +109,15 @@ func (p *ProxyGenerator) Get() string {
 func worker(jobs <-chan string, results chan<- string) {
 	transp := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   NewProxyGenerator().Timeout * time.Second,
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).DialContext,
-		TLSHandshakeTimeout: NewProxyGenerator().Timeout * time.Second,
-		DisableKeepAlives:   true,
+		MaxIdleConns:          1,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		DisableKeepAlives:     true,
 	}
 
 	for proxy := range jobs {

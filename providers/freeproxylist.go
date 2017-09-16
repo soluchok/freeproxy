@@ -21,11 +21,15 @@ func NewFreeProxyList() *FreeProxyList {
 
 var TransportMakeRequest = &http.Transport{
 	DialContext: (&net.Dialer{
-		Timeout:   time.Second * 5,
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
 		DualStack: true,
 	}).DialContext,
-	TLSHandshakeTimeout: time.Second * 5,
-	DisableKeepAlives:   true,
+	MaxIdleConns:          1,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	DisableKeepAlives:     true,
 }
 
 func (x *FreeProxyList) MakeRequest() ([]byte, error) {
