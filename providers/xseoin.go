@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -18,7 +19,10 @@ var (
 	ipRegexp         = regexp.MustCompile(`(\d{1,3}\.){3}\d{1,3}`)
 )
 
-type XseoIn struct{}
+type XseoIn struct {
+	proxyList  []string
+	lastUpdate time.Time
+}
 
 func NewXseoIn() *XseoIn {
 	return &XseoIn{}
@@ -40,7 +44,7 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Connection", "keep-alive")
 
 	client := &http.Client{
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * 10,
 		Transport: TransportMakeRequest,
 	}
 
@@ -51,7 +55,6 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	defer resp.Body.Close()
 
 	var body bytes.Buffer
-
 	if _, err := io.Copy(&body, resp.Body); err != nil {
 		return nil, err
 	}
@@ -85,6 +88,14 @@ func (x *XseoIn) DecodePort(decodeParams map[byte]byte, encryptedData string) []
 }
 
 func (x *XseoIn) Load(body []byte) ([]string, error) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
+		x.proxyList = make([]string, 0, 0)
+	}
+
+	if len(x.proxyList) != 0 {
+		return x.proxyList, nil
+	}
+
 	if body == nil {
 		var err error
 		if body, err = x.MakeRequest(); err != nil {
@@ -109,21 +120,23 @@ func (x *XseoIn) Load(body []byte) ([]string, error) {
 		return nil, errors.New("ip not found")
 	}
 
-	proxyList := make([]string, 0, len(ips))
+	x.proxyList = make([]string, 0, len(ips))
 
 	for _, ip := range ips {
 		data := strings.Split(ip.Content(), ":")
 		if len(data) > 1 {
 			if ipRegexp.MatchString(data[0]) {
 				if port := x.DecodePort(decodeParams, portRegexp.FindString(data[1])); port != nil {
-					proxyList = append(proxyList, data[0]+":"+string(port))
+					x.proxyList = append(x.proxyList, data[0]+":"+string(port))
 				}
 			}
 		}
 	}
-	return proxyList, nil
+	x.lastUpdate = time.Now()
+	return x.proxyList, nil
 }
 
 func (x *XseoIn) List() ([]string, error) {
+	defer runtime.GC()
 	return x.Load(nil)
 }

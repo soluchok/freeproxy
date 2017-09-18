@@ -4,32 +4,33 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"net/http"
-
-	"time"
-
 	"net"
+	"net/http"
+	"runtime"
+	"time"
 
 	"github.com/moovweb/gokogiri"
 )
 
-type FreeProxyList struct{}
+var TransportMakeRequest = &http.Transport{
+	DialContext: (&net.Dialer{
+		Timeout:   10 * time.Second,
+		DualStack: true,
+	}).DialContext,
+	MaxIdleConns:          10,
+	IdleConnTimeout:       9 * time.Second,
+	TLSHandshakeTimeout:   5 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	DisableKeepAlives:     true,
+}
+
+type FreeProxyList struct {
+	proxyList  []string
+	lastUpdate time.Time
+}
 
 func NewFreeProxyList() *FreeProxyList {
 	return &FreeProxyList{}
-}
-
-var TransportMakeRequest = &http.Transport{
-	DialContext: (&net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-		DualStack: true,
-	}).DialContext,
-	MaxIdleConns:          1,
-	IdleConnTimeout:       90 * time.Second,
-	TLSHandshakeTimeout:   10 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-	DisableKeepAlives:     true,
 }
 
 func (x *FreeProxyList) MakeRequest() ([]byte, error) {
@@ -46,7 +47,7 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "https://free-proxy-list.net/web-proxy.html")
 
 	client := &http.Client{
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * 10,
 		Transport: TransportMakeRequest,
 	}
 
@@ -64,6 +65,14 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 }
 
 func (x *FreeProxyList) Load(body []byte) ([]string, error) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
+		x.proxyList = make([]string, 0, 0)
+	}
+
+	if len(x.proxyList) != 0 {
+		return x.proxyList, nil
+	}
+
 	if body == nil {
 		var err error
 		if body, err = x.MakeRequest(); err != nil {
@@ -94,15 +103,17 @@ func (x *FreeProxyList) Load(body []byte) ([]string, error) {
 		return nil, errors.New("len port not equal ip")
 	}
 
-	proxyList := make([]string, 0, len(ips))
+	x.proxyList = make([]string, 0, len(ips))
 
 	for i, ip := range ips {
-		proxyList = append(proxyList, ip.Content()+":"+ports[i].Content())
+		x.proxyList = append(x.proxyList, ip.Content()+":"+ports[i].Content())
 	}
 
-	return proxyList, nil
+	x.lastUpdate = time.Now()
+	return x.proxyList, nil
 }
 
 func (x *FreeProxyList) List() ([]string, error) {
+	defer runtime.GC()
 	return x.Load(nil)
 }
