@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/andriisoluk/freeproxy/providers"
+	"github.com/soluchok/freeproxy/providers"
 )
 
 var (
@@ -167,9 +167,7 @@ func NewProxyGenerator() *ProxyGenerator {
 		}
 
 		//add providers to generator
-		instance.AddProvider(providers.NewFreeProxyList())
-		instance.AddProvider(providers.NewXseoIn())
-		instance.AddProvider(providers.NewFreeProxyListNet())
+		instance.AddProvider(providers.NewHidemyName())
 		instance.AddProvider(providers.NewFreeProxyList())
 		instance.AddProvider(providers.NewXseoIn())
 		instance.AddProvider(providers.NewFreeProxyListNet())
