@@ -117,6 +117,10 @@ func (c *CoolProxy) MakeRequest() ([]byte, error) {
 	return body.Bytes(), err
 }
 
+func (c *CoolProxy) List() ([]string, error) {
+	return c.Load(nil)
+}
+
 func rot13(x rune) rune {
 	capital := x >= 'A' && x <= 'Z'
 	if !capital && (x < 'a' || x > 'z') {
