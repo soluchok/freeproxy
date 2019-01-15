@@ -171,6 +171,7 @@ func NewProxyGenerator() *ProxyGenerator {
 		instance.AddProvider(providers.NewFreeProxyList())
 		instance.AddProvider(providers.NewXseoIn())
 		instance.AddProvider(providers.NewFreeProxyListNet())
+		instance.AddProvider(providers.NewCoolProxy())
 
 		//run workers
 		go instance.run()
