@@ -10,13 +10,14 @@ $ go get github.com/soluchok/freeproxy
 package main
 
 import (
-    "log"
-    "github.com/soluchok/freeproxy"
+	"log"
+
+	"github.com/soluchok/freeproxy"
 )
 
 func main() {
-    gen := freeproxy.NewProxyGenerator()
-    log.Println(gen.Get())
+	gen := freeproxy.New()
+	log.Println(gen.Get())
 }
 
 //190.248.128.122:3128

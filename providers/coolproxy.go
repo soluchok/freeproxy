@@ -12,6 +12,8 @@ import (
 	"github.com/moovweb/gokogiri"
 )
 
+const coolProxyURL = `https://www.cool-proxy.net/proxies/http_proxy_list/sort:score/direction:desc`
+
 type CoolProxy struct {
 	proxyList  []string
 	lastUpdate time.Time
@@ -21,7 +23,9 @@ func NewCoolProxy() *CoolProxy {
 	return new(CoolProxy)
 }
 
-const coolProxyURL = `https://www.cool-proxy.net/proxies/http_proxy_list/sort:score/direction:desc`
+func (*CoolProxy) Name() string {
+	return "www.cool-proxy.net"
+}
 
 func (c *CoolProxy) Load(body []byte) ([]string, error) {
 	if time.Now().Unix() >= c.lastUpdate.Unix()+(60*5) {

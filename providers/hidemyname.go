@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/moovweb/gokogiri"
+	"github.com/soluchok/go-cloudflare-scraper"
 )
 
 type HidemyName struct {
@@ -19,32 +19,23 @@ func NewHidemyName() *HidemyName {
 	return &HidemyName{}
 }
 
+func (x *HidemyName) Name() string {
+	return "hidemyna.me"
+}
+
 func (x *HidemyName) MakeRequest() ([]byte, error) {
-	req, err := http.NewRequest("GET", "https://hidemy.name/ua/proxy-list/", nil)
+	c, err := scraper.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Accept-Language", "en-US,en;q=0.8,uk;q=0.6,ru;q=0.4")
-	req.Header.Set("Upgrade-Insecure-Requests", "1")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
-	req.Header.Set("Referer", "https://hidemy.name/ua/proxy-list/?start=128")
-	req.Header.Set("Authority", "hidemy.name")
-
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: TransportMakeRequest,
-	}
-
-	resp, err := client.Do(req)
+	res, err := c.Get("https://hidemyna.me/en/proxy-list")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var body bytes.Buffer
-	if _, err := io.Copy(&body, resp.Body); err != nil {
+	if _, err := io.Copy(&body, res.Body); err != nil {
 		return nil, err
 	}
 

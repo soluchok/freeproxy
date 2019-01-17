@@ -1,18 +1,12 @@
 package freeproxy
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"reflect"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/soluchok/freeproxy/providers"
 )
 
@@ -22,21 +16,16 @@ var (
 	cache    sync.Map
 )
 
+type Verify func(proxy string) bool
+
 type Cache struct {
 	time   int64
 	result bool
 	err    error
 }
 
-type Provider interface {
-	List() ([]string, error)
-}
-
-type CheckIP struct {
-	IP string
-}
-
 type ProxyGenerator struct {
+	VerifyFn  Verify
 	canLoad   uint32
 	providers []Provider
 	proxy     chan string
@@ -58,80 +47,20 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 	}
 }
 
-func (p *ProxyGenerator) load() (errs []error) {
+func (p *ProxyGenerator) load() {
 	for _, provider := range p.providers {
 		ips, err := provider.List()
 		if err != nil {
-			errs = append(errs, err)
+			logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
 			continue
 		}
+		logrus.Infof("provider %s found ips %d", provider.Name(), len(ips))
 		for _, proxy := range ips {
 			p.job <- proxy
 		}
 	}
 	atomic.StoreUint32(&p.canLoad, 0)
 	return
-}
-
-func (p *ProxyGenerator) Check(proxy string) (bool, error) {
-	if val, ok := cache.Load(proxy); ok {
-		if val.(Cache).time < time.Now().Unix()-60 {
-			cache.Delete(proxy)
-		} else {
-			return val.(Cache).result, val.(Cache).err
-		}
-	}
-	res, err := func() (bool, error) {
-		req, err := http.NewRequest("GET", "http://api.ipify.org/?format=json", nil)
-		if err != nil {
-			return false, err
-		}
-		proxyURL, err := url.Parse("http://" + proxy)
-		if err != nil {
-			return false, err
-		}
-
-		client := &http.Client{
-			Timeout: time.Second * 10,
-			Transport: &http.Transport{
-				Proxy: http.ProxyURL(proxyURL),
-				DialContext: (&net.Dialer{
-					Timeout:   10 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				MaxIdleConns:          1,
-				IdleConnTimeout:       9 * time.Second,
-				TLSHandshakeTimeout:   5 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-				DisableKeepAlives:     true,
-			},
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return false, err
-		}
-		defer resp.Body.Close()
-
-		var body bytes.Buffer
-		if _, err := io.Copy(&body, resp.Body); err != nil {
-			return false, err
-		}
-
-		var checkip CheckIP
-		if err := json.Unmarshal(body.Bytes(), &checkip); err != nil {
-			return false, err
-		}
-
-		return strings.Contains(proxy, checkip.IP), nil
-	}()
-
-	cache.Store(proxy, Cache{
-		time:   time.Now().Unix(),
-		result: res,
-		err:    err,
-	})
-	return res, err
 }
 
 func (p *ProxyGenerator) Get() string {
@@ -148,22 +77,29 @@ func (p *ProxyGenerator) Get() string {
 }
 
 func (p *ProxyGenerator) do(proxy string) {
-	if ok, _ := p.Check(proxy); ok {
+	if p.VerifyFn(proxy) {
 		p.proxy <- proxy
 	}
 }
 
-func (p *ProxyGenerator) run() {
+func (p *ProxyGenerator) worker() {
 	for proxy := range p.job {
-		go p.do(proxy)
+		p.do(proxy)
 	}
 }
 
-func NewProxyGenerator() *ProxyGenerator {
+func (p *ProxyGenerator) run() {
+	for w := 1; w <= 30; w++ {
+		go p.worker()
+	}
+}
+
+func New() *ProxyGenerator {
 	once.Do(func() {
 		instance = &ProxyGenerator{
-			proxy: make(chan string),
-			job:   make(chan string),
+			VerifyFn: verifyProxy,
+			proxy:    make(chan string),
+			job:      make(chan string),
 		}
 
 		//add providers to generator

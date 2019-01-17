@@ -26,6 +26,10 @@ func NewFreeProxyListNet() *FreeProxyListNet {
 	return &FreeProxyListNet{}
 }
 
+func (*FreeProxyListNet) Name() string {
+	return "www.freeproxylists.net"
+}
+
 func (x *FreeProxyListNet) MakeRequest() ([]byte, error) {
 	req, err := http.NewRequest("GET", "http://www.freeproxylists.net/", nil)
 	if err != nil {
