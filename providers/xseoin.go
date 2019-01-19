@@ -49,13 +49,18 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
 
-	client := &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
+	client := &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
+		DisableKeepAlives: true,
+	}}
 
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var body bytes.Buffer
 	if _, err := io.Copy(&body, resp.Body); err != nil {
@@ -91,7 +96,7 @@ func (x *XseoIn) DecodePort(decodeParams map[byte]byte, encryptedData string) []
 }
 
 func (x *XseoIn) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
 		x.proxyList = make([]string, 0, 0)
 	}
 

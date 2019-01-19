@@ -31,7 +31,7 @@ func (*CoolProxy) Name() string {
 }
 
 func (c *CoolProxy) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= c.lastUpdate.Unix()+(60*15) {
+	if time.Now().Unix() >= c.lastUpdate.Unix()+(60*10) {
 		c.proxyList = make([]string, 0, 0)
 	}
 
@@ -93,7 +93,9 @@ func (c *CoolProxy) Load(body []byte) ([]string, error) {
 func (c *CoolProxy) MakeRequest() ([]byte, error) {
 	var (
 		body   bytes.Buffer
-		client = &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
+		client = &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
+			DisableKeepAlives: true,
+		}}
 	)
 
 	req, err := http.NewRequest(http.MethodGet, coolProxyURL, nil)
@@ -101,19 +103,16 @@ func (c *CoolProxy) MakeRequest() ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := client.Do(req)
+	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	defer func() {
-		e := res.Body.Close()
-		if err != nil {
-			err = e
-		}
-	}()
-
-	_, err = body.ReadFrom(res.Body)
+	_, err = body.ReadFrom(resp.Body)
 	if err != nil {
 		return nil, err
 	}

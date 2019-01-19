@@ -26,15 +26,13 @@ func (x *HidemyName) Name() string {
 	return "hidemyna.me"
 }
 
-// TODO: need implementation
 func (x *HidemyName) SetProxy(proxy string) {
 	x.proxy = proxy
 }
 
 func (x *HidemyName) MakeRequest() ([]byte, error) {
-	c, err := scraper.NewClient()
-	if err != nil {
-		return nil, err
+	transport := &http.Transport{
+		DisableKeepAlives: true,
 	}
 
 	if x.proxy != "" {
@@ -42,9 +40,18 @@ func (x *HidemyName) MakeRequest() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		c.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		transport.Proxy = http.ProxyURL(proxyURL)
 	}
 
+	scraper, err := scraper.NewTransport(transport)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: scraper,
+	}
 	res, err := c.Get("https://hidemyna.me/en/proxy-list")
 	if err != nil {
 		return nil, err
@@ -59,7 +66,7 @@ func (x *HidemyName) MakeRequest() ([]byte, error) {
 }
 
 func (x *HidemyName) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
 		x.proxyList = make([]string, 0, 0)
 	}
 

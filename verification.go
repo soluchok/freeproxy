@@ -32,24 +32,27 @@ func verifyProxy(proxy string) bool {
 		Timeout: time.Second * 5,
 		Transport: &http.Transport{
 			Proxy:             http.ProxyURL(proxyURL),
-			MaxIdleConns:      1,
 			DisableKeepAlives: true,
 		},
 	}
 
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		logrus.Debugf("cannot verify proxy %q err:%s", proxy, err)
-		return false
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
 		return false
 	}
 
 	var body bytes.Buffer
 	if _, err := io.Copy(&body, resp.Body); err != nil {
 		logrus.Errorf("cannot copy resp.Body err:%s", err)
+		return false
+	}
+
+	if resp.StatusCode != http.StatusOK {
 		return false
 	}
 

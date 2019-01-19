@@ -2,6 +2,7 @@ package providers
 
 import (
 	"bytes"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"strings"
@@ -25,13 +26,20 @@ func (*ProxyTech) Name() string {
 func (*ProxyTech) SetProxy(_ string) {}
 
 func (x *ProxyTech) MakeRequest() ([]byte, error) {
-	client := &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
+
+	client := &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
+		DisableKeepAlives: true,
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+	}}
 
 	resp, err := client.Get("https://proxy.l337.tech/txt")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var body bytes.Buffer
 	if _, err := io.Copy(&body, resp.Body); err != nil {
@@ -42,7 +50,7 @@ func (x *ProxyTech) MakeRequest() ([]byte, error) {
 }
 
 func (x *ProxyTech) Load() ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*30) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
 		x.proxyList = make([]string, 0, 0)
 	}
 

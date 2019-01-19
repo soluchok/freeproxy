@@ -47,7 +47,6 @@ func (x *FreeProxyListNet) MakeRequest() ([]byte, error) {
 	req.Header.Set("Cache-Control", "max-age=0")
 
 	transport := &http.Transport{
-		MaxIdleConns:      1,
 		DisableKeepAlives: true,
 	}
 
@@ -60,15 +59,18 @@ func (x *FreeProxyListNet) MakeRequest() ([]byte, error) {
 	}
 
 	client := &http.Client{
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * 10,
 		Transport: transport,
 	}
 
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var body bytes.Buffer
 	if _, err := io.Copy(&body, resp.Body); err != nil {
@@ -86,7 +88,7 @@ func (x *FreeProxyListNet) IPDecode(ipstr string) (string, error) {
 }
 
 func (x *FreeProxyListNet) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
 		x.proxyList = make([]string, 0, 0)
 	}
 

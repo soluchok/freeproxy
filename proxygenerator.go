@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	instance *ProxyGenerator
-	once     sync.Once
+	instance  *ProxyGenerator
+	usedProxy sync.Map
+	once      sync.Once
 )
 
 type Verify func(proxy string) bool
@@ -45,15 +46,22 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 
 func (p *ProxyGenerator) load() {
 	for _, provider := range p.providers {
-		if p.lastValidProxy != "" {
-			provider.SetProxy(p.lastValidProxy)
-		}
+		usedProxy.Store(p.lastValidProxy, time.Now().Hour())
+		provider.SetProxy(p.lastValidProxy)
 
 		ips, err := provider.List()
 		if err != nil {
 			logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
 			continue
 		}
+
+		usedProxy.Range(func(key, value interface{}) bool {
+			if value.(int) != time.Now().Hour() {
+				usedProxy.Delete(key)
+			}
+			return true
+		})
+
 		logrus.Debugf("provider %s found ips %d", provider.Name(), len(ips))
 		for _, proxy := range ips {
 			p.job <- proxy
@@ -66,7 +74,10 @@ func (p *ProxyGenerator) load() {
 func (p *ProxyGenerator) Get() string {
 	select {
 	case proxy := <-p.proxy:
-		p.lastValidProxy = proxy
+		_, ok := usedProxy.Load(proxy)
+		if !ok {
+			p.lastValidProxy = proxy
+		}
 		return proxy
 	case <-time.After(time.Millisecond * 500):
 		if atomic.LoadUint32(&p.canLoad) == 0 {
