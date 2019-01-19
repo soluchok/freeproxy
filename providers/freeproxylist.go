@@ -2,11 +2,11 @@ package providers
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
 	"net/http"
-	"runtime"
 	"time"
 
 	"github.com/moovweb/gokogiri"
@@ -17,11 +17,11 @@ var TransportMakeRequest = &http.Transport{
 		Timeout:   10 * time.Second,
 		DualStack: true,
 	}).DialContext,
-	MaxIdleConns:          10,
-	IdleConnTimeout:       9 * time.Second,
+	MaxIdleConns:          100,
 	TLSHandshakeTimeout:   5 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
 	DisableKeepAlives:     true,
+	TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 }
 
 type FreeProxyList struct {
@@ -50,10 +50,7 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 	req.Header.Set("Authority", "free-proxy-list.net")
 	req.Header.Set("Referer", "https://free-proxy-list.net/web-proxy.html")
 
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: TransportMakeRequest,
-	}
+	client := &http.Client{Transport: TransportMakeRequest}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -69,7 +66,7 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 }
 
 func (x *FreeProxyList) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*5) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
 		x.proxyList = make([]string, 0, 0)
 	}
 
@@ -118,6 +115,5 @@ func (x *FreeProxyList) Load(body []byte) ([]string, error) {
 }
 
 func (x *FreeProxyList) List() ([]string, error) {
-	defer runtime.GC()
 	return x.Load(nil)
 }

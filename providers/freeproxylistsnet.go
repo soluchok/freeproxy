@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"runtime"
 	"time"
 
 	"github.com/moovweb/gokogiri"
@@ -42,10 +41,7 @@ func (x *FreeProxyListNet) MakeRequest() ([]byte, error) {
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
 	req.Header.Set("Cache-Control", "max-age=0")
 
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: TransportMakeRequest,
-	}
+	client := &http.Client{Transport: TransportMakeRequest}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -69,7 +65,7 @@ func (x *FreeProxyListNet) IPDecode(ipstr string) (string, error) {
 }
 
 func (x *FreeProxyListNet) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*5) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
 		x.proxyList = make([]string, 0, 0)
 	}
 
@@ -137,6 +133,5 @@ func (x *FreeProxyListNet) Load(body []byte) ([]string, error) {
 }
 
 func (x *FreeProxyListNet) List() ([]string, error) {
-	defer runtime.GC()
 	return x.Load(nil)
 }

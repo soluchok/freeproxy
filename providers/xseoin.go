@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -47,10 +46,7 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
 
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: TransportMakeRequest,
-	}
+	client := &http.Client{Transport: TransportMakeRequest}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -92,7 +88,7 @@ func (x *XseoIn) DecodePort(decodeParams map[byte]byte, encryptedData string) []
 }
 
 func (x *XseoIn) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*5) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*15) {
 		x.proxyList = make([]string, 0, 0)
 	}
 
@@ -141,6 +137,5 @@ func (x *XseoIn) Load(body []byte) ([]string, error) {
 }
 
 func (x *XseoIn) List() ([]string, error) {
-	defer runtime.GC()
 	return x.Load(nil)
 }

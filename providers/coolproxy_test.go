@@ -511,7 +511,7 @@ func TestCoolProxy_Load(t *testing.T) {
 	}
 
 	if len(ips) != 20 {
-		t.Fatalf("expected ips len to be %s, but got %s", 20, len(ips))
+		t.Fatalf("expected ips len to be %d, but got %d", 20, len(ips))
 	}
 }
 
