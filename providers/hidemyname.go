@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/moovweb/gokogiri"
@@ -11,6 +13,7 @@ import (
 )
 
 type HidemyName struct {
+	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
 }
@@ -23,10 +26,23 @@ func (x *HidemyName) Name() string {
 	return "hidemyna.me"
 }
 
+// TODO: need implementation
+func (x *HidemyName) SetProxy(proxy string) {
+	x.proxy = proxy
+}
+
 func (x *HidemyName) MakeRequest() ([]byte, error) {
 	c, err := scraper.NewClient()
 	if err != nil {
 		return nil, err
+	}
+
+	if x.proxy != "" {
+		proxyURL, err := url.Parse("http://" + x.proxy)
+		if err != nil {
+			return nil, err
+		}
+		c.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	}
 
 	res, err := c.Get("https://hidemyna.me/en/proxy-list")

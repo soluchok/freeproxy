@@ -27,6 +27,9 @@ func NewXseoIn() *XseoIn {
 	return &XseoIn{}
 }
 
+// TODO: need implementation
+func (*XseoIn) SetProxy(_ string) {}
+
 func (*XseoIn) Name() string {
 	return "xseo.in"
 }
@@ -46,7 +49,7 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
 
-	client := &http.Client{Transport: TransportMakeRequest}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
 
 	resp, err := client.Do(req)
 	if err != nil {

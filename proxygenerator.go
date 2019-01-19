@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"github.com/soluchok/freeproxy/providers"
 )
@@ -13,23 +14,18 @@ import (
 var (
 	instance *ProxyGenerator
 	once     sync.Once
-	cache    sync.Map
 )
 
 type Verify func(proxy string) bool
 
-type Cache struct {
-	time   int64
-	result bool
-	err    error
-}
-
 type ProxyGenerator struct {
-	VerifyFn  Verify
-	canLoad   uint32
-	providers []Provider
-	proxy     chan string
-	job       chan string
+	lastValidProxy string
+	cache          *cache.Cache
+	VerifyFn       Verify
+	canLoad        uint32
+	providers      []Provider
+	proxy          chan string
+	job            chan string
 }
 
 func (p *ProxyGenerator) isProvider(provider Provider) bool {
@@ -49,12 +45,16 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 
 func (p *ProxyGenerator) load() {
 	for _, provider := range p.providers {
+		if p.lastValidProxy != "" {
+			provider.SetProxy(p.lastValidProxy)
+		}
+
 		ips, err := provider.List()
 		if err != nil {
 			logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
 			continue
 		}
-		logrus.Infof("provider %s found ips %d", provider.Name(), len(ips))
+		logrus.Debugf("provider %s found ips %d", provider.Name(), len(ips))
 		for _, proxy := range ips {
 			p.job <- proxy
 		}
@@ -66,6 +66,7 @@ func (p *ProxyGenerator) load() {
 func (p *ProxyGenerator) Get() string {
 	select {
 	case proxy := <-p.proxy:
+		p.lastValidProxy = proxy
 		return proxy
 	case <-time.After(time.Millisecond * 500):
 		if atomic.LoadUint32(&p.canLoad) == 0 {
@@ -76,8 +77,18 @@ func (p *ProxyGenerator) Get() string {
 	return p.Get()
 }
 
+func (p *ProxyGenerator) verifyWithCache(proxy string) bool {
+	val, found := p.cache.Get(proxy)
+	if found {
+		return val.(bool)
+	}
+	res := p.VerifyFn(proxy)
+	p.cache.Set(proxy, res, cache.DefaultExpiration)
+	return res
+}
+
 func (p *ProxyGenerator) do(proxy string) {
-	if p.VerifyFn(proxy) {
+	if p.verifyWithCache(proxy) {
 		p.proxy <- proxy
 	}
 }
@@ -89,7 +100,7 @@ func (p *ProxyGenerator) worker() {
 }
 
 func (p *ProxyGenerator) run() {
-	for w := 1; w <= 30; w++ {
+	for w := 1; w <= 40; w++ {
 		go p.worker()
 	}
 }
@@ -97,6 +108,7 @@ func (p *ProxyGenerator) run() {
 func New() *ProxyGenerator {
 	once.Do(func() {
 		instance = &ProxyGenerator{
+			cache:    cache.New(10*time.Minute, 15*time.Minute),
 			VerifyFn: verifyProxy,
 			proxy:    make(chan string),
 			job:      make(chan string),

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -29,20 +28,12 @@ func verifyProxy(proxy string) bool {
 		logrus.Errorf("cannot parse proxy %q err:%s", proxy, err)
 		return false
 	}
-
 	client := &http.Client{
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 5,
 		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			MaxIdleConns:          1,
-			IdleConnTimeout:       9 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			DisableKeepAlives:     true,
+			Proxy:             http.ProxyURL(proxyURL),
+			MaxIdleConns:      1,
+			DisableKeepAlives: true,
 		},
 	}
 
@@ -52,7 +43,6 @@ func verifyProxy(proxy string) bool {
 		return false
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return false
 	}

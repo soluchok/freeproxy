@@ -23,6 +23,9 @@ func NewCoolProxy() *CoolProxy {
 	return new(CoolProxy)
 }
 
+// TODO: need implementation
+func (*CoolProxy) SetProxy(_ string) {}
+
 func (*CoolProxy) Name() string {
 	return "www.cool-proxy.net"
 }
@@ -83,14 +86,14 @@ func (c *CoolProxy) Load(body []byte) ([]string, error) {
 
 		c.proxyList = append(c.proxyList, fmt.Sprintf("%s:%s", decoded, ports[i].Content()))
 	}
-
+	c.lastUpdate = time.Now()
 	return c.proxyList, nil
 }
 
 func (c *CoolProxy) MakeRequest() ([]byte, error) {
 	var (
 		body   bytes.Buffer
-		client = &http.Client{Transport: TransportMakeRequest}
+		client = &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
 	)
 
 	req, err := http.NewRequest(http.MethodGet, coolProxyURL, nil)

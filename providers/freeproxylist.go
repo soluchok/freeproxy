@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"time"
 
@@ -13,15 +12,9 @@ import (
 )
 
 var TransportMakeRequest = &http.Transport{
-	DialContext: (&net.Dialer{
-		Timeout:   10 * time.Second,
-		DualStack: true,
-	}).DialContext,
-	MaxIdleConns:          100,
-	TLSHandshakeTimeout:   5 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-	DisableKeepAlives:     true,
-	TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+	MaxIdleConns:      100,
+	DisableKeepAlives: true,
+	TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 }
 
 type FreeProxyList struct {
@@ -32,6 +25,9 @@ type FreeProxyList struct {
 func NewFreeProxyList() *FreeProxyList {
 	return &FreeProxyList{}
 }
+
+// TODO: need implementation
+func (*FreeProxyList) SetProxy(_ string) {}
 
 func (*FreeProxyList) Name() string {
 	return "free-proxy-list.net"
@@ -50,7 +46,7 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 	req.Header.Set("Authority", "free-proxy-list.net")
 	req.Header.Set("Referer", "https://free-proxy-list.net/web-proxy.html")
 
-	client := &http.Client{Transport: TransportMakeRequest}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
 
 	resp, err := client.Do(req)
 	if err != nil {

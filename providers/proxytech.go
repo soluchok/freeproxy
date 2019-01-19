@@ -21,8 +21,11 @@ func (*ProxyTech) Name() string {
 	return "proxy.l337.tech"
 }
 
+// TODO: need implementation
+func (*ProxyTech) SetProxy(_ string) {}
+
 func (x *ProxyTech) MakeRequest() ([]byte, error) {
-	client := &http.Client{Transport: TransportMakeRequest}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: TransportMakeRequest}
 
 	resp, err := client.Get("https://proxy.l337.tech/txt")
 	if err != nil {
