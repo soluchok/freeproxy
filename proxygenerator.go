@@ -114,7 +114,7 @@ func New() *ProxyGenerator {
 			cache:    cache.New(10*time.Minute, 15*time.Minute),
 			VerifyFn: verifyProxy,
 			proxy:    make(chan string),
-			job:      make(chan string),
+			job:      make(chan string, 100),
 		}
 
 		//add providers to generator
@@ -124,6 +124,7 @@ func New() *ProxyGenerator {
 		instance.AddProvider(providers.NewFreeProxyListNet())
 		instance.AddProvider(providers.NewCoolProxy())
 		instance.AddProvider(providers.NewProxyTech())
+		instance.AddProvider(providers.NewProxyList())
 		//run workers
 		go instance.run()
 	})
