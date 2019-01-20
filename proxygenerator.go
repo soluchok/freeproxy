@@ -3,7 +3,6 @@ package freeproxy
 import (
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -23,7 +22,6 @@ type ProxyGenerator struct {
 	lastValidProxy string
 	cache          *cache.Cache
 	VerifyFn       Verify
-	canLoad        uint32
 	providers      []Provider
 	proxy          chan string
 	job            chan string
@@ -45,47 +43,39 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 }
 
 func (p *ProxyGenerator) load() {
-	for _, provider := range p.providers {
-		usedProxy.Store(p.lastValidProxy, time.Now().Hour())
-		provider.SetProxy(p.lastValidProxy)
+	for {
+		for _, provider := range p.providers {
+			usedProxy.Store(p.lastValidProxy, time.Now().Hour())
+			provider.SetProxy(p.lastValidProxy)
 
-		ips, err := provider.List()
-		if err != nil {
-			logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
-			continue
-		}
-
-		usedProxy.Range(func(key, value interface{}) bool {
-			if value.(int) != time.Now().Hour() {
-				usedProxy.Delete(key)
+			ips, err := provider.List()
+			if err != nil {
+				logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
+				continue
 			}
-			return true
-		})
 
-		logrus.Debugf("provider %s found ips %d", provider.Name(), len(ips))
-		for _, proxy := range ips {
-			p.job <- proxy
+			usedProxy.Range(func(key, value interface{}) bool {
+				if value.(int) != time.Now().Hour() {
+					usedProxy.Delete(key)
+				}
+				return true
+			})
+
+			logrus.Debugf("provider %s found ips %d", provider.Name(), len(ips))
+			for _, proxy := range ips {
+				p.job <- proxy
+			}
 		}
 	}
-	atomic.StoreUint32(&p.canLoad, 0)
-	return
 }
 
 func (p *ProxyGenerator) Get() string {
-	select {
-	case proxy := <-p.proxy:
-		_, ok := usedProxy.Load(proxy)
-		if !ok {
-			p.lastValidProxy = proxy
-		}
-		return proxy
-	case <-time.After(time.Millisecond * 500):
-		if atomic.LoadUint32(&p.canLoad) == 0 {
-			atomic.StoreUint32(&p.canLoad, 1)
-			go p.load()
-		}
+	proxy := <-p.proxy
+	_, ok := usedProxy.Load(proxy)
+	if !ok {
+		p.lastValidProxy = proxy
 	}
-	return p.Get()
+	return proxy
 }
 
 func (p *ProxyGenerator) verifyWithCache(proxy string) bool {
@@ -111,6 +101,8 @@ func (p *ProxyGenerator) worker() {
 }
 
 func (p *ProxyGenerator) run() {
+	go p.load()
+
 	for w := 1; w <= 40; w++ {
 		go p.worker()
 	}
