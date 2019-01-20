@@ -64,8 +64,12 @@ func (x *ProxyTech) Load() ([]string, error) {
 	}
 
 	x.proxyList = strings.Split(string(body), "\n")
+	if len(x.proxyList) < 20 {
+		x.proxyList = make([]string, 0, 0)
+	} else {
+		x.lastUpdate = time.Now()
+	}
 
-	x.lastUpdate = time.Now()
 	return x.proxyList, nil
 }
 
