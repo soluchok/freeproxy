@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"time"
 
@@ -15,16 +16,21 @@ import (
 const coolProxyURL = `https://www.cool-proxy.net/proxies/http_proxy_list/sort:score/direction:desc`
 
 type CoolProxy struct {
+	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
+	client     *http.Client
 }
 
 func NewCoolProxy() *CoolProxy {
-	return new(CoolProxy)
+	return &CoolProxy{
+		client: NewClient(),
+	}
 }
 
-// TODO: need implementation
-func (*CoolProxy) SetProxy(_ string) {}
+func (c *CoolProxy) SetProxy(proxy string) {
+	c.proxy = proxy
+}
 
 func (*CoolProxy) Name() string {
 	return "www.cool-proxy.net"
@@ -91,19 +97,24 @@ func (c *CoolProxy) Load(body []byte) ([]string, error) {
 }
 
 func (c *CoolProxy) MakeRequest() ([]byte, error) {
-	var (
-		body   bytes.Buffer
-		client = &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
-			DisableKeepAlives: true,
-		}}
-	)
+	var body bytes.Buffer
 
 	req, err := http.NewRequest(http.MethodGet, coolProxyURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := client.Do(req)
+	if c.proxy != "" {
+		proxyURL, err := url.Parse("http://" + c.proxy)
+		if err != nil {
+			return nil, err
+		}
+		c.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		c.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+	}
+
+	resp, err := c.client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

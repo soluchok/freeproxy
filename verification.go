@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/soluchok/freeproxy/providers"
 )
 
 type checkIP struct {
@@ -28,13 +28,9 @@ func verifyProxy(proxy string) bool {
 		logrus.Errorf("cannot parse proxy %q err:%s", proxy, err)
 		return false
 	}
-	client := &http.Client{
-		Timeout: time.Second * 5,
-		Transport: &http.Transport{
-			Proxy:             http.ProxyURL(proxyURL),
-			DisableKeepAlives: true,
-		},
-	}
+
+	client := providers.NewClient()
+	client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 
 	resp, err := client.Do(req)
 	if resp != nil {

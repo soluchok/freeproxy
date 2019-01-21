@@ -20,10 +20,13 @@ type FreeProxyListNet struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
+	client     *http.Client
 }
 
 func NewFreeProxyListNet() *FreeProxyListNet {
-	return &FreeProxyListNet{}
+	return &FreeProxyListNet{
+		client: NewClient(),
+	}
 }
 
 func (x *FreeProxyListNet) SetProxy(proxy string) {
@@ -46,24 +49,17 @@ func (x *FreeProxyListNet) MakeRequest() ([]byte, error) {
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
 	req.Header.Set("Cache-Control", "max-age=0")
 
-	transport := &http.Transport{
-		DisableKeepAlives: true,
-	}
-
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		transport.Proxy = http.ProxyURL(proxyURL)
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	client := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: transport,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := x.client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

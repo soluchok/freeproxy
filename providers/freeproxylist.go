@@ -15,10 +15,13 @@ type FreeProxyList struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
+	client     *http.Client
 }
 
 func NewFreeProxyList() *FreeProxyList {
-	return &FreeProxyList{}
+	return &FreeProxyList{
+		client: NewClient(),
+	}
 }
 
 func (x *FreeProxyList) SetProxy(proxy string) {
@@ -42,21 +45,17 @@ func (x *FreeProxyList) MakeRequest() ([]byte, error) {
 	req.Header.Set("Authority", "free-proxy-list.net")
 	req.Header.Set("Referer", "https://free-proxy-list.net/web-proxy.html")
 
-	transport := &http.Transport{
-		DisableKeepAlives: true,
-	}
-
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		transport.Proxy = http.ProxyURL(proxyURL)
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	client := &http.Client{Timeout: time.Second * 10, Transport: transport}
-
-	resp, err := client.Do(req)
+	resp, err := x.client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

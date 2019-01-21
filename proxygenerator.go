@@ -54,6 +54,8 @@ func (p *ProxyGenerator) load() {
 				continue
 			}
 
+			logrus.Println(provider.Name(), len(ips))
+
 			usedProxy.Range(func(key, value interface{}) bool {
 				if value.(int) != time.Now().Hour() {
 					usedProxy.Delete(key)

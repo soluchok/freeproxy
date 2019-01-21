@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/moovweb/gokogiri"
 	"github.com/soluchok/go-cloudflare-scraper"
+
+	"github.com/moovweb/gokogiri"
 )
 
 type HidemyName struct {
@@ -31,9 +32,7 @@ func (x *HidemyName) SetProxy(proxy string) {
 }
 
 func (x *HidemyName) MakeRequest() ([]byte, error) {
-	transport := &http.Transport{
-		DisableKeepAlives: true,
-	}
+	transport := NewTransport()
 
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
@@ -43,16 +42,13 @@ func (x *HidemyName) MakeRequest() ([]byte, error) {
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
 
-	scraper, err := scraper.NewTransport(transport)
-	if err != nil {
-		return nil, err
+	scraperTransport, _ := scraper.NewTransport(transport)
+	client := &http.Client{
+		Timeout:   time.Second * 10,
+		Transport: scraperTransport,
 	}
 
-	c := &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: scraper,
-	}
-	res, err := c.Get("https://hidemyna.me/en/proxy-list")
+	res, err := client.Get("https://hidemyna.me/en/proxy-list")
 	if err != nil {
 		return nil, err
 	}

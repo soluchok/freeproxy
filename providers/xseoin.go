@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -21,14 +22,19 @@ var (
 type XseoIn struct {
 	proxyList  []string
 	lastUpdate time.Time
+	proxy      string
+	client     *http.Client
 }
 
 func NewXseoIn() *XseoIn {
-	return &XseoIn{}
+	return &XseoIn{
+		client: NewClient(),
+	}
 }
 
-// TODO: need implementation
-func (*XseoIn) SetProxy(_ string) {}
+func (x *XseoIn) SetProxy(proxy string) {
+	x.proxy = proxy
+}
 
 func (*XseoIn) Name() string {
 	return "xseo.in"
@@ -49,11 +55,17 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
 
-	client := &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
-		DisableKeepAlives: true,
-	}}
+	if x.proxy != "" {
+		proxyURL, err := url.Parse("http://" + x.proxy)
+		if err != nil {
+			return nil, err
+		}
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+	}
 
-	resp, err := client.Do(req)
+	resp, err := x.client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

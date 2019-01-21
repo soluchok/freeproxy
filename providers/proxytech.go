@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -12,27 +13,39 @@ import (
 type ProxyTech struct {
 	proxyList  []string
 	lastUpdate time.Time
+	proxy      string
+	client     *http.Client
 }
 
 func NewProxyTech() *ProxyTech {
-	return &ProxyTech{}
+	p := &ProxyTech{
+		client: NewClient(),
+	}
+	p.client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	return p
 }
 
 func (*ProxyTech) Name() string {
 	return "proxy.l337.tech"
 }
 
-// TODO: need implementation
-func (*ProxyTech) SetProxy(_ string) {}
+func (x *ProxyTech) SetProxy(proxy string) {
+	x.proxy = proxy
+}
 
 func (x *ProxyTech) MakeRequest() ([]byte, error) {
 
-	client := &http.Client{Timeout: time.Second * 10, Transport: &http.Transport{
-		DisableKeepAlives: true,
-		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
-	}}
+	if x.proxy != "" {
+		proxyURL, err := url.Parse("http://" + x.proxy)
+		if err != nil {
+			return nil, err
+		}
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+	}
 
-	resp, err := client.Get("https://proxy.l337.tech/txt")
+	resp, err := x.client.Get("https://proxy.l337.tech/txt")
 	if resp != nil {
 		defer resp.Body.Close()
 	}

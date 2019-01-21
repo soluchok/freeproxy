@@ -2,7 +2,6 @@ package providers
 
 import (
 	"bytes"
-	"crypto/tls"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,10 +13,13 @@ type PubProxy struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
+	client     *http.Client
 }
 
 func NewPubProxy() *PubProxy {
-	return &PubProxy{}
+	return &PubProxy{
+		client: NewClient(),
+	}
 }
 
 func (*PubProxy) Name() string {
@@ -30,22 +32,17 @@ func (x *PubProxy) SetProxy(proxy string) {
 
 func (x *PubProxy) MakeRequest() ([]byte, error) {
 
-	transport := &http.Transport{
-		DisableKeepAlives: true,
-		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
-	}
-
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		transport.Proxy = http.ProxyURL(proxyURL)
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+	} else {
+		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	client := &http.Client{Timeout: time.Second * 10, Transport: transport}
-
-	resp, err := client.Get("http://pubproxy.com/api/proxy?limit=20&format=txt&type=http")
+	resp, err := x.client.Get("http://pubproxy.com/api/proxy?limit=20&format=txt&type=http")
 	if resp != nil {
 		defer resp.Body.Close()
 	}
