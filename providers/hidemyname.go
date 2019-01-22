@@ -48,13 +48,17 @@ func (x *HidemyName) MakeRequest() ([]byte, error) {
 		Transport: scraperTransport,
 	}
 
-	res, err := client.Get("https://hidemyna.me/en/proxy-list")
+	resp, err := client.Get("https://hidemyna.me/en/proxy-list")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	var body bytes.Buffer
-	if _, err := io.Copy(&body, res.Body); err != nil {
+	if _, err := io.Copy(&body, resp.Body); err != nil {
 		return nil, err
 	}
 
