@@ -83,6 +83,9 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 }
 
 func (x *XseoIn) DecodeParamsToMap(params string) map[byte]byte {
+	if len(params) < 39 {
+		return nil
+	}
 	return map[byte]byte{
 		params[0]:  params[2],  //0
 		params[4]:  params[6],  //1
@@ -124,6 +127,9 @@ func (x *XseoIn) Load(body []byte) ([]string, error) {
 	}
 
 	decodeParams := x.DecodeParamsToMap(portParamsRegexp.FindString(string(body)))
+	if decodeParams == nil {
+		return nil, errors.New("decodeParams can not be <nil>")
+	}
 
 	doc, err := gokogiri.ParseHtml(body)
 	if err != nil {
