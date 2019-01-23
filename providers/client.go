@@ -10,6 +10,7 @@ func NewTransport() *http.Transport {
 	return &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   5 * time.Second,
+			KeepAlive: 5 * time.Second,
 			DualStack: true,
 		}).DialContext,
 		TLSHandshakeTimeout:   2 * time.Second,
