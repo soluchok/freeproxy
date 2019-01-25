@@ -37,7 +37,7 @@ func (*CoolProxy) Name() string {
 }
 
 func (c *CoolProxy) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= c.lastUpdate.Unix()+(60*10) {
+	if time.Now().Unix() >= c.lastUpdate.Unix()+(60*20) {
 		c.proxyList = make([]string, 0, 0)
 	}
 

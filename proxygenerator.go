@@ -113,7 +113,7 @@ func (p *ProxyGenerator) run() {
 func New() *ProxyGenerator {
 	once.Do(func() {
 		instance = &ProxyGenerator{
-			cache:    cache.New(10*time.Minute, 15*time.Minute),
+			cache:    cache.New(20*time.Minute, 5*time.Minute),
 			VerifyFn: verifyProxy,
 			proxy:    make(chan string),
 			job:      make(chan string, 100),

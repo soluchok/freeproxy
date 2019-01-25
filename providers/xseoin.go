@@ -111,7 +111,7 @@ func (x *XseoIn) DecodePort(decodeParams map[byte]byte, encryptedData string) []
 }
 
 func (x *XseoIn) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*20) {
 		x.proxyList = make([]string, 0, 0)
 	}
 

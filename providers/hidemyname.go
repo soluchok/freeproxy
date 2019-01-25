@@ -66,7 +66,7 @@ func (x *HidemyName) MakeRequest() ([]byte, error) {
 }
 
 func (x *HidemyName) Load(body []byte) ([]string, error) {
-	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*10) {
+	if time.Now().Unix() >= x.lastUpdate.Unix()+(60*20) {
 		x.proxyList = make([]string, 0, 0)
 	}
 
