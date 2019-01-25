@@ -120,8 +120,8 @@ func New() *ProxyGenerator {
 		}
 
 		//add providers to generator
-		instance.AddProvider(providers.NewHidemyName())
 		instance.AddProvider(providers.NewFreeProxyList())
+		instance.AddProvider(providers.NewHidemyName())
 		instance.AddProvider(providers.NewXseoIn())
 		instance.AddProvider(providers.NewFreeProxyListNet())
 		instance.AddProvider(providers.NewCoolProxy())
