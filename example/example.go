@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/soluchok/freeproxy"
 )
 
 func main() {
 	gen := freeproxy.New()
-	log.Println(gen.Get())
+	fmt.Println(gen.Get())
 }

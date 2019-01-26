@@ -14,7 +14,6 @@ func NewTransport() *http.Transport {
 			DualStack: true,
 		}).DialContext,
 		TLSHandshakeTimeout:   3 * time.Second,
-		ResponseHeaderTimeout: 2 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableKeepAlives:     true,
 	}

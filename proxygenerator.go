@@ -1,6 +1,7 @@
 package freeproxy
 
 import (
+	"math/rand"
 	"reflect"
 	"sync"
 	"time"
@@ -42,6 +43,16 @@ func (p *ProxyGenerator) AddProvider(provider Provider) {
 	}
 }
 
+func shuffle(vals []string) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for len(vals) > 0 {
+		n := len(vals)
+		randIndex := r.Intn(n)
+		vals[n-1], vals[randIndex] = vals[randIndex], vals[n-1]
+		vals = vals[:n-1]
+	}
+}
+
 func (p *ProxyGenerator) load() {
 	for {
 		for _, provider := range p.providers {
@@ -64,6 +75,7 @@ func (p *ProxyGenerator) load() {
 			})
 
 			logrus.Debugf("provider %s found ips %d", provider.Name(), len(ips))
+			shuffle(ips)
 			for _, proxy := range ips {
 				p.job <- proxy
 			}
