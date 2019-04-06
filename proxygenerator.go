@@ -61,6 +61,7 @@ func (p *ProxyGenerator) load() {
 
 			ips, err := provider.List()
 			if err != nil {
+				p.lastValidProxy = ""
 				logrus.Errorf("cannot load list of proxy %s err:%s", provider.Name(), err)
 				continue
 			}
