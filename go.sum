@@ -12,8 +12,8 @@ github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/soluchok/go-cloudflare-scraper v0.0.0-20190117212330-ecf651d4e614 h1:8tFYo86bL0EELYV9MHHEDVL3YMbYp3+8UURUi9pNpPg=
 github.com/soluchok/go-cloudflare-scraper v0.0.0-20190117212330-ecf651d4e614/go.mod h1:RDp1OxRqLXsErlRZiiSQH97OZcCsXxxuTKdKSa7cj7Q=
-github.com/soluchok/gokogiri v0.0.0-20190529205153-b69a0f4a0b3f h1:OBlEbg/YoLdy0m+qzwCpud+sLepQEuKqHITnGlP7ZzQ=
-github.com/soluchok/gokogiri v0.0.0-20190529205153-b69a0f4a0b3f/go.mod h1:liJOFn/a4OCMGhi4oKSMbTq4ub/eeBXvBAvme7qhYDw=
+github.com/soluchok/gokogiri v0.0.0-20190903214353-0718098bc8db h1:A6d/z2sgEh2Aew30v8iXf6lz/KLzjPaveKWZfFnynLg=
+github.com/soluchok/gokogiri v0.0.0-20190903214353-0718098bc8db/go.mod h1:AeOKFPFGImxYUOIAZHbnhTCaprufpXXtVpbmmrzbZLM=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1w=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
