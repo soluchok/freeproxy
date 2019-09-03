@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/moovweb/gokogiri"
+	"github.com/soluchok/gokogiri"
 )
 
 type FreeProxyList struct {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moovweb/gokogiri"
+	"github.com/soluchok/gokogiri"
 )
 
 var (

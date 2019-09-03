@@ -10,7 +10,7 @@ import (
 
 	"github.com/soluchok/go-cloudflare-scraper"
 
-	"github.com/moovweb/gokogiri"
+	"github.com/soluchok/gokogiri"
 )
 
 type HidemyName struct {
