@@ -19,13 +19,10 @@ type CoolProxy struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
-	client     *http.Client
 }
 
 func NewCoolProxy() *CoolProxy {
-	return &CoolProxy{
-		client: NewClient(),
-	}
+	return &CoolProxy{}
 }
 
 func (c *CoolProxy) SetProxy(proxy string) {
@@ -104,17 +101,18 @@ func (c *CoolProxy) MakeRequest() ([]byte, error) {
 		return nil, err
 	}
 
+	var client = NewClient()
 	if c.proxy != "" {
 		proxyURL, err := url.Parse("http://" + c.proxy)
 		if err != nil {
 			return nil, err
 		}
-		c.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	} else {
-		c.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+		client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

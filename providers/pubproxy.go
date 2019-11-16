@@ -13,13 +13,10 @@ type PubProxy struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
-	client     *http.Client
 }
 
 func NewPubProxy() *PubProxy {
-	return &PubProxy{
-		client: NewClient(),
-	}
+	return &PubProxy{}
 }
 
 func (*PubProxy) Name() string {
@@ -31,18 +28,18 @@ func (x *PubProxy) SetProxy(proxy string) {
 }
 
 func (x *PubProxy) MakeRequest() ([]byte, error) {
-
+	var client = NewClient()
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	} else {
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+		client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	resp, err := x.client.Get("http://pubproxy.com/api/proxy?limit=20&format=txt&type=http")
+	resp, err := client.Get("http://pubproxy.com/api/proxy?limit=20&format=txt&type=http")
 	if resp != nil {
 		defer resp.Body.Close()
 	}

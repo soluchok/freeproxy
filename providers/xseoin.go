@@ -23,13 +23,10 @@ type XseoIn struct {
 	proxyList  []string
 	lastUpdate time.Time
 	proxy      string
-	client     *http.Client
 }
 
 func NewXseoIn() *XseoIn {
-	return &XseoIn{
-		client: NewClient(),
-	}
+	return &XseoIn{}
 }
 
 func (x *XseoIn) SetProxy(proxy string) {
@@ -54,18 +51,18 @@ func (x *XseoIn) MakeRequest() ([]byte, error) {
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
 	req.Header.Set("Referer", "http://xseo.in/proxylist")
 	req.Header.Set("Connection", "keep-alive")
-
+	var client = NewClient()
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	} else {
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+		client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	resp, err := x.client.Do(req)
+	resp, err := client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

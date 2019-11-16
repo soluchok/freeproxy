@@ -15,15 +15,12 @@ type ProxyList struct {
 	proxy      string
 	proxyList  []string
 	lastUpdate time.Time
-	client     *http.Client
 }
 
 var proxyRegexp = regexp.MustCompile(`Proxy\(\'([\w\d=+]+)\'\)`)
 
 func NewProxyList() *ProxyList {
-	return &ProxyList{
-		client: NewClient(),
-	}
+	return &ProxyList{}
 }
 
 func (x *ProxyList) SetProxy(proxy string) {
@@ -40,18 +37,18 @@ func (x *ProxyList) MakeRequest(page int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	var client = NewClient()
 	if x.proxy != "" {
 		proxyURL, err := url.Parse("http://" + x.proxy)
 		if err != nil {
 			return nil, err
 		}
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
+		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	} else {
-		x.client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
+		client.Transport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 	}
 
-	resp, err := x.client.Do(req)
+	resp, err := client.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
